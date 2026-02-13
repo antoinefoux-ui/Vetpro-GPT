@@ -8,11 +8,7 @@ export function useEventStream(path: string, onData: (payload: unknown) => void)
     // token in query string only because EventSource doesn't support custom headers
     const source = new EventSource(`${path}?token=${encodeURIComponent(token)}`);
     source.addEventListener("dashboard", (event) => {
-      const data = JSON.parse((event as MessageEvent).data) as { type?: string; payload?: unknown };
-      if (data?.type === "dashboard" && "payload" in data) {
-        onData(data.payload);
-        return;
-      }
+      const data = JSON.parse((event as MessageEvent).data);
       onData(data);
     });
     return () => source.close();

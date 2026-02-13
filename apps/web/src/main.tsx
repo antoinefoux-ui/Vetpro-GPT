@@ -3,7 +3,6 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
 import { AuthProvider } from "./components/AuthProvider";
-import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { I18nProvider } from "./lib/i18n";
 import "./styles.css";
 
@@ -12,9 +11,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <I18nProvider>
         <AuthProvider>
-          <AppErrorBoundary>
-            <App />
-          </AppErrorBoundary>
+          <App />
         </AuthProvider>
       </I18nProvider>
     </BrowserRouter>

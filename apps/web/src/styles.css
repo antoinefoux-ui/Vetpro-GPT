@@ -238,12 +238,3 @@ td {
 }
 
 .skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}.skip-link:focus{left:1rem;top:1rem;width:auto;height:auto;background:#111;color:#fff;padding:.5rem;z-index:1000}
-
-.error-boundary {
-  max-width: 760px;
-  margin: 3rem auto;
-  background: #fff;
-  border: 1px solid #f1d5d7;
-  border-radius: 12px;
-  padding: 1.25rem;
-}

@@ -10,28 +10,12 @@ interface RealtimeStats {
   stats: { clients: number; appointments: number; invoices: number; lowStock: number };
 }
 
-function isRealtimeStats(payload: unknown): payload is RealtimeStats {
-  if (!payload || typeof payload !== "object") return false;
-  const candidate = payload as Partial<RealtimeStats>;
-  if (!candidate.stats || typeof candidate.stats !== "object") return false;
-  return (
-    typeof candidate.timestamp === "string" &&
-    typeof candidate.stats.clients === "number" &&
-    typeof candidate.stats.appointments === "number" &&
-    typeof candidate.stats.invoices === "number" &&
-    typeof candidate.stats.lowStock === "number"
-  );
-}
-
 export function DashboardPage() {
   const { t } = useI18n();
   const [realtime, setRealtime] = useState<RealtimeStats | null>(null);
-  const safeRealtime = isRealtimeStats(realtime) ? realtime : null;
 
   const onData = useCallback((payload: unknown) => {
-    if (isRealtimeStats(payload)) {
-      setRealtime(payload);
-    }
+    setRealtime(payload as RealtimeStats);
   }, []);
 
   useEventStream(eventStreamUrl, onData);
@@ -54,13 +38,13 @@ export function DashboardPage() {
       <section className="grid">
         <article className="card">
           <h3>Realtime Feed</h3>
-          {safeRealtime ? (
+          {realtime ? (
             <ul>
-              <li>Clients: {safeRealtime.stats.clients}</li>
-              <li>Appointments: {safeRealtime.stats.appointments}</li>
-              <li>Invoices: {safeRealtime.stats.invoices}</li>
-              <li>Low stock items: {safeRealtime.stats.lowStock}</li>
-              <li>Last update: {new Date(safeRealtime.timestamp).toLocaleTimeString()}</li>
+              <li>Clients: {realtime.stats.clients}</li>
+              <li>Appointments: {realtime.stats.appointments}</li>
+              <li>Invoices: {realtime.stats.invoices}</li>
+              <li>Low stock items: {realtime.stats.lowStock}</li>
+              <li>Last update: {new Date(realtime.timestamp).toLocaleTimeString()}</li>
             </ul>
           ) : (
             <p>Waiting for event stream…</p>

@@ -224,7 +224,6 @@ export interface CommunicationLog {
   attempts: number;
   lastAttemptAt?: string;
   errorMessage?: string;
-  nextRetryAt?: string;
   context?: Record<string, unknown>;
   createdAt: string;
 }
@@ -291,9 +290,5 @@ export interface SystemSettings {
     vaccineLeadDays: number;
     annualExamIntervalDays: number;
     enabledChannels: Array<"EMAIL" | "SMS">;
-  };
-  communicationPolicy: {
-    maxAttempts: number;
-    retryBackoffMinutes: number;
   };
 }

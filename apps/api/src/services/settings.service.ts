@@ -1,10 +1,9 @@
 import { db } from "../store/inMemoryDb.js";
 import type { SystemSettings } from "../types/domain.js";
 
-type SettingsPatch = Partial<Omit<SystemSettings, "integrations" | "reminderPolicy" | "communicationPolicy">> & {
+type SettingsPatch = Partial<Omit<SystemSettings, "integrations" | "reminderPolicy">> & {
   integrations?: Partial<SystemSettings["integrations"]>;
   reminderPolicy?: Partial<SystemSettings["reminderPolicy"]>;
-  communicationPolicy?: Partial<SystemSettings["communicationPolicy"]>;
 };
 
 export function getSettings(): SystemSettings {
@@ -22,10 +21,6 @@ export function updateSettings(patch: SettingsPatch): SystemSettings {
     reminderPolicy: {
       ...db.settings.reminderPolicy,
       ...(patch.reminderPolicy ?? {})
-    },
-    communicationPolicy: {
-      ...db.settings.communicationPolicy,
-      ...(patch.communicationPolicy ?? {})
     }
   };
   return db.settings;
