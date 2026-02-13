@@ -3,11 +3,9 @@
     "target": "ES2020",
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "moduleResolution": "Bundler",
+    "types": ["vite/client"],  // Add this line
     "jsx": "react-jsx",
-    "strict": true,
-    "esModuleInterop": true,
+    "moduleResolution": "bundler",
     "skipLibCheck": true
-  },
-  "include": ["src"]
+  }
 }
