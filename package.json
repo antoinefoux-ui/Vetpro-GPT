@@ -1,0 +1,16 @@
+{
+  "name": "vetpro-gpt",
+  "private": true,
+  "version": "0.2.0",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/api",
+    "dev:web": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/api && npm run build --workspace apps/web",
+    "test": "npm run test --workspace apps/api",
+    "test:e2e": "npm run test:e2e --workspace apps/api"
+  }
+}
