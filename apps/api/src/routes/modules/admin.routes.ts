@@ -16,7 +16,7 @@ import {
 } from "../../services/gdpr.service.js";
 import { getSettings, updateSettings } from "../../services/settings.service.js";
 import { createCredential, listCredentials } from "../../services/staff.service.js";
-import { listCommunications, markCommunicationStatus, processQueuedCommunications, retryDueFailedCommunications, retryFailedCommunications } from "../../services/communication.service.js";
+import { listCommunications, markCommunicationStatus, processQueuedCommunications, retryFailedCommunications } from "../../services/communication.service.js";
 import { runReminderSweep } from "../../services/reminder.service.js";
 
 const querySchema = z.object({ limit: z.coerce.number().int().positive().max(500).optional() });
@@ -41,10 +41,6 @@ const settingsPatchSchema = z.object({
     vaccineLeadDays: z.number().int().nonnegative().optional(),
     annualExamIntervalDays: z.number().int().positive().optional(),
     enabledChannels: z.array(z.enum(["EMAIL", "SMS"]))
-  }).optional(),
-  communicationPolicy: z.object({
-    maxAttempts: z.number().int().positive().max(10).optional(),
-    retryBackoffMinutes: z.number().int().positive().max(1440).optional()
   }).optional()
 });
 const communicationStatusSchema = z.object({ status: z.enum(["QUEUED", "SENT", "FAILED"]) });
@@ -193,12 +189,6 @@ adminRouter.post("/communications/process", requirePermission("admin.write"), as
 });
 
 
-
-adminRouter.post("/communications/retry-due", requirePermission("admin.write"), async (req, res) => {
-  const retried = retryDueFailedCommunications();
-  await logAuditEvent({ userId: req.user!.id, action: "COMMUNICATION_DUE_RETRY_REQUEUED", entityType: "Communication", entityId: `retry-due-${Date.now()}`, metadata: { retried: retried.length }, ipAddress: req.ip });
-  return res.json({ retried });
-});
 
 adminRouter.post("/communications/retry-failed", requirePermission("admin.write"), async (req, res) => {
   const retried = retryFailedCommunications();
