@@ -16,6 +16,7 @@ export function AdminCompliancePage() {
   const [form, setForm] = useState({ clientId: "", type: "EXPORT" as "EXPORT" | "DELETE" });
   const [credentialForm, setCredentialForm] = useState({ userId: "", credentialType: "DVM" as StaffCredential["credentialType"], credentialNumber: "", expiresAt: "" });
   const [error, setError] = useState<string | null>(null);
+  const [reminderResult, setReminderResult] = useState<{ queued: number; vaccineDue: number; annualExamDue: number } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -111,6 +112,7 @@ export function AdminCompliancePage() {
           <h3>Communication Outbox</h3>
           <div className="inline-actions">
             <button onClick={() => void api.processCommunications().then(load)}>Process queued</button>
+            <button onClick={() => void api.runReminderSweep().then((result) => { setReminderResult(result); return load(); })}>Run reminder sweep</button>
           </div>
           <table>
             <thead><tr><th>Time</th><th>Channel</th><th>Recipient</th><th>Template</th><th>Status</th></tr></thead>
@@ -132,11 +134,13 @@ export function AdminCompliancePage() {
               ))}
             </tbody>
           </table>
+          {reminderResult ? <p className="muted">Queued: {reminderResult.queued} (Vaccines: {reminderResult.vaccineDue}, Annual exams: {reminderResult.annualExamDue})</p> : null}
         </article>
 
         <article className="card">
           <h3>Audit Log Explorer</h3>
           <table><thead><tr><th>Time</th><th>Action</th><th>Entity</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id}><td>{new Date(log.createdAt).toLocaleString()}</td><td>{log.action}</td><td>{log.entityType}</td></tr>)}</tbody></table>
+          {reminderResult ? <p className="muted">Queued: {reminderResult.queued} (Vaccines: {reminderResult.vaccineDue}, Annual exams: {reminderResult.annualExamDue})</p> : null}
         </article>
       </div>
     </section>

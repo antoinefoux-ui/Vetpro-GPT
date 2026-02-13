@@ -43,3 +43,8 @@
 - No-show creation now queues automated follow-up SMS messages.
 - Return request creation/status updates now queue automated email messages.
 - Admin panel now includes communication outbox management with batch processing and manual status override.
+
+
+## Incremental build: proactive reminder automation
+- Added reminder sweep that auto-queues vaccine due reminders (30-day window) and annual exam reminders (>365 days since last visit).
+- Added admin endpoint/UI controls to run reminder sweeps and inspect queued counts in communication outbox.

@@ -110,6 +110,7 @@ export const api = {
   updateStaffRole: (id: string, role: UserRole) => request(`/admin/staff/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
   listCommunications: (limit = 100) => request<{ items: Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; createdAt: string }> }>(`/admin/communications?limit=${limit}`),
   processCommunications: () => request<{ processed: Array<{ id: string }> }>("/admin/communications/process", { method: "POST" }),
+  runReminderSweep: () => request<{ queued: number; vaccineDue: number; annualExamDue: number }>("/admin/communications/reminders/run", { method: "POST" }),
   setCommunicationStatus: (id: string, status: "QUEUED" | "SENT" | "FAILED") => request(`/admin/communications/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   listStaffCredentials: (userId?: string) => request<{ items: StaffCredential[] }>(`/admin/staff/credentials${userId ? `?userId=${userId}` : ""}`),
   createStaffCredential: (payload: { userId: string; credentialType: StaffCredential["credentialType"]; credentialNumber?: string; expiresAt?: string }) => request("/admin/staff/credentials", { method: "POST", body: JSON.stringify(payload) }),

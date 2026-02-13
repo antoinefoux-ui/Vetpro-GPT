@@ -14,6 +14,8 @@ import { addWaitlistEntry, createAppointment, markNoShow, updateWaitlistStatus }
 import { approveInvoice, createInvoiceDraft, createNoShowFeeInvoice, fiscalizeInvoice, postInvoicePayment, refundInvoice } from "../services/billing.service.js";
 import { approveDeletion, createGdprRequest, executeDeletion, placeLegalHold, setGdprRequestStatus } from "../services/gdpr.service.js";
 import { addOrderLine, checkoutOrder, createCart, createReturnRequest, updateOrderStatus, updateReturnRequestStatus } from "../services/commerce.service.js";
+import { createVaccine } from "../services/clinical.service.js";
+import { runReminderSweep } from "../services/reminder.service.js";
 
 function resetDb() {
   db.users = [];
@@ -186,4 +188,31 @@ test("communication logs are queued for no-show and returns", () => {
   updateReturnRequestStatus(ret.id, "APPROVED");
   assert.ok(db.communications.some((m) => m.template === "RETURN_REQUEST_RECEIVED"));
   assert.ok(db.communications.some((m) => m.template === "RETURN_STATUS_UPDATED"));
+});
+
+
+test("reminder sweep queues vaccine and annual exam reminders", () => {
+  resetDb();
+  const client = createClient({ firstName: "Rem", lastName: "Client", phone: "+421900005555", email: "rem@example.com" });
+  const pet = createPet({ clientId: client.id, name: "Remy", species: "Dog" });
+
+  createVaccine({
+    petId: pet.id,
+    vaccineName: "Rabies",
+    administeredAt: new Date("2026-01-01T10:00:00.000Z").toISOString(),
+    dueAt: new Date("2026-01-20T10:00:00.000Z").toISOString()
+  });
+
+  createAppointment({
+    petId: pet.id,
+    type: "Checkup",
+    startsAt: new Date("2024-01-01T10:00:00.000Z").toISOString(),
+    endsAt: new Date("2024-01-01T10:30:00.000Z").toISOString()
+  });
+
+  const result = runReminderSweep(new Date("2026-01-05T10:00:00.000Z").toISOString());
+  assert.equal(result.vaccineDue, 1);
+  assert.equal(result.annualExamDue, 1);
+  assert.ok(db.communications.some((m) => m.template === "VACCINE_DUE_REMINDER"));
+  assert.ok(db.communications.some((m) => m.template === "ANNUAL_EXAM_REMINDER"));
 });

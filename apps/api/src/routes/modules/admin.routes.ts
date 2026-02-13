@@ -17,6 +17,7 @@ import {
 import { getSettings, updateSettings } from "../../services/settings.service.js";
 import { createCredential, listCredentials } from "../../services/staff.service.js";
 import { listCommunications, markCommunicationStatus, processQueuedCommunications } from "../../services/communication.service.js";
+import { runReminderSweep } from "../../services/reminder.service.js";
 
 const querySchema = z.object({ limit: z.coerce.number().int().positive().max(500).optional() });
 const roleUpdateSchema = z.object({ role: z.enum(["ADMIN", "VETERINARIAN", "NURSE", "RECEPTIONIST", "SHOP_STAFF"]) });
@@ -176,6 +177,21 @@ adminRouter.post("/communications/process", requirePermission("admin.write"), as
   const processed = processQueuedCommunications();
   await logAuditEvent({ userId: req.user!.id, action: "COMMUNICATION_BATCH_PROCESSED", entityType: "Communication", entityId: `batch-${Date.now()}`, metadata: { processed: processed.length }, ipAddress: req.ip });
   return res.json({ processed });
+});
+
+
+
+adminRouter.post("/communications/reminders/run", requirePermission("admin.write"), async (req, res) => {
+  const result = runReminderSweep();
+  await logAuditEvent({
+    userId: req.user!.id,
+    action: "REMINDER_SWEEP_RUN",
+    entityType: "Communication",
+    entityId: `reminder-${Date.now()}`,
+    metadata: result as unknown as Record<string, unknown>,
+    ipAddress: req.ip
+  });
+  return res.json(result);
 });
 
 adminRouter.patch("/communications/:id/status", requirePermission("admin.write"), async (req, res) => {
