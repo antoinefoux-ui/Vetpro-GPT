@@ -2,17 +2,22 @@ import type { Appointment, Client, InventoryItem, Invoice, PurchaseOrder, UserRo
 
 const base = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api";
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("vetpro_access_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: HeadersInit = {
+  const headers = new Headers({
     "Content-Type": "application/json",
-    ...authHeaders(),
-    ...(init?.headers as Record<string, string> ?? {})
-  };
+    ...authHeaders()
+  });
+
+  if (init?.headers) {
+    new Headers(init.headers).forEach((value, key) => {
+      headers.set(key, value);
+    });
+  }
 
   const response = await fetch(`${base}${path}`, {
     ...init,
