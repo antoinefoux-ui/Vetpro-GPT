@@ -16,7 +16,7 @@ import {
 } from "../../services/gdpr.service.js";
 import { getSettings, updateSettings } from "../../services/settings.service.js";
 import { createCredential, listCredentials } from "../../services/staff.service.js";
-import { listCommunications, markCommunicationStatus, processQueuedCommunications } from "../../services/communication.service.js";
+import { listCommunications, markCommunicationStatus, processQueuedCommunications, retryFailedCommunications } from "../../services/communication.service.js";
 import { runReminderSweep } from "../../services/reminder.service.js";
 
 const querySchema = z.object({ limit: z.coerce.number().int().positive().max(500).optional() });
@@ -189,6 +189,12 @@ adminRouter.post("/communications/process", requirePermission("admin.write"), as
 });
 
 
+
+adminRouter.post("/communications/retry-failed", requirePermission("admin.write"), async (req, res) => {
+  const retried = retryFailedCommunications();
+  await logAuditEvent({ userId: req.user!.id, action: "COMMUNICATION_FAILED_REQUEUED", entityType: "Communication", entityId: `retry-${Date.now()}`, metadata: { retried: retried.length }, ipAddress: req.ip });
+  return res.json({ retried });
+});
 
 adminRouter.post("/communications/reminders/run", requirePermission("admin.write"), async (req, res) => {
   const parsed = reminderRunSchema.safeParse(req.body ?? {});

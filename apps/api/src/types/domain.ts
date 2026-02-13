@@ -221,6 +221,9 @@ export interface CommunicationLog {
   recipient: string;
   template: string;
   status: "QUEUED" | "SENT" | "FAILED";
+  attempts: number;
+  lastAttemptAt?: string;
+  errorMessage?: string;
   context?: Record<string, unknown>;
   createdAt: string;
 }

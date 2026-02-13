@@ -3,6 +3,11 @@ import type { CommunicationLog } from "../types/domain.js";
 import { makeId } from "../utils/id.js";
 import { nowIso } from "../utils/time.js";
 
+function shouldFailDelivery(row: CommunicationLog): boolean {
+  const forceFail = typeof row.context?.forceFail === "boolean" ? row.context.forceFail : false;
+  return forceFail || row.recipient.toLowerCase().includes("invalid");
+}
+
 export function queueCommunication(input: {
   channel: "EMAIL" | "SMS";
   recipient: string;
@@ -15,6 +20,7 @@ export function queueCommunication(input: {
     recipient: input.recipient,
     template: input.template,
     status: "QUEUED",
+    attempts: 0,
     context: input.context,
     createdAt: nowIso()
   };
@@ -30,13 +36,33 @@ export function markCommunicationStatus(id: string, status: CommunicationLog["st
   const row = db.communications.find((item) => item.id === id);
   if (!row) throw new Error("Communication log not found");
   row.status = status;
+  if (status === "QUEUED") {
+    row.errorMessage = undefined;
+  }
   return row;
 }
 
 export function processQueuedCommunications(batchSize = 20): CommunicationLog[] {
   const queued = db.communications.filter((item) => item.status === "QUEUED").slice(0, batchSize);
   queued.forEach((row) => {
+    row.attempts += 1;
+    row.lastAttemptAt = nowIso();
+    if (shouldFailDelivery(row)) {
+      row.status = "FAILED";
+      row.errorMessage = "Simulated delivery failure";
+      return;
+    }
     row.status = "SENT";
+    row.errorMessage = undefined;
   });
   return queued;
+}
+
+export function retryFailedCommunications(batchSize = 20): CommunicationLog[] {
+  const failed = db.communications.filter((item) => item.status === "FAILED").slice(0, batchSize);
+  failed.forEach((row) => {
+    row.status = "QUEUED";
+    row.errorMessage = undefined;
+  });
+  return failed;
 }

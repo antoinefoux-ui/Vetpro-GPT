@@ -17,6 +17,7 @@ import { addOrderLine, checkoutOrder, createCart, createReturnRequest, updateOrd
 import { createVaccine } from "../services/clinical.service.js";
 import { runReminderSweep } from "../services/reminder.service.js";
 import { updateSettings } from "../services/settings.service.js";
+import { processQueuedCommunications, queueCommunication, retryFailedCommunications } from "../services/communication.service.js";
 
 function resetDb() {
   db.users = [];
@@ -261,4 +262,25 @@ test("reminder policy and dry-run behavior", () => {
   assert.equal(run.vaccineDue, 1);
   const queued = db.communications.find((m) => m.template === "VACCINE_DUE_REMINDER");
   assert.equal(queued?.channel, "SMS");
+});
+
+
+test("communication failed messages can be requeued and retried", () => {
+  resetDb();
+  queueCommunication({ channel: "EMAIL", recipient: "invalid@recipient.local", template: "TEST_FAILURE", context: { forceFail: true } });
+
+  const processed = processQueuedCommunications();
+  assert.equal(processed.length, 1);
+  assert.equal(processed[0].status, "FAILED");
+  assert.equal(processed[0].attempts, 1);
+
+  const retried = retryFailedCommunications();
+  assert.equal(retried.length, 1);
+  assert.equal(retried[0].status, "QUEUED");
+
+  retried[0].context = { forceFail: false };
+  retried[0].recipient = "valid@example.com";
+  const processedAgain = processQueuedCommunications();
+  assert.equal(processedAgain[0].status, "SENT");
+  assert.equal(processedAgain[0].attempts, 2);
 });

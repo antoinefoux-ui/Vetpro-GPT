@@ -10,7 +10,7 @@ export function AdminCompliancePage() {
   const [permissions, setPermissions] = useState<Record<string, string[]>>({});
   const [gdpr, setGdpr] = useState<Array<{ id: string; clientId: string; type: string; status: string; createdAt: string }>>([]);
   const [settings, setSettings] = useState({ clinicName: "", timezone: "Europe/Bratislava", defaultLanguage: "sk" as "en" | "sk", appointmentDefaultMinutes: 30, reminder24hEnabled: true, integrations: { googleCalendarApiKey: "", sendgridApiKey: "", smsProviderKey: "", stripePublicKey: "", ekasaEndpoint: "" }, reminderPolicy: { vaccineLeadDays: 30, annualExamIntervalDays: 365, enabledChannels: ["EMAIL", "SMS"] as Array<"EMAIL" | "SMS"> } });
-  const [communications, setCommunications] = useState<Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; createdAt: string }>>([]);
+  const [communications, setCommunications] = useState<Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; attempts: number; lastAttemptAt?: string; errorMessage?: string; createdAt: string }>>([]);
   const [gdprPreview, setGdprPreview] = useState("");
   const [gdprDeleteCheck, setGdprDeleteCheck] = useState("");
   const [form, setForm] = useState({ clientId: "", type: "EXPORT" as "EXPORT" | "DELETE" });
@@ -124,12 +124,13 @@ export function AdminCompliancePage() {
           <h3>Communication Outbox</h3>
           <div className="inline-actions">
             <button onClick={() => void api.processCommunications().then(load)}>Process queued</button>
+            <button onClick={() => void api.retryFailedCommunications().then(load)}>Requeue failed</button>
             <label>Reference date<input type="date" value={reminderRunDate} onChange={(e) => setReminderRunDate(e.target.value)} /></label>
             <button onClick={() => void runReminders(false)}>Run reminder sweep</button>
             <button onClick={() => void runReminders(true)}>Dry run reminder sweep</button>
           </div>
           <table>
-            <thead><tr><th>Time</th><th>Channel</th><th>Recipient</th><th>Template</th><th>Status</th></tr></thead>
+            <thead><tr><th>Time</th><th>Channel</th><th>Recipient</th><th>Template</th><th>Attempts</th><th>Last Error</th><th>Status</th></tr></thead>
             <tbody>
               {communications.map((msg) => (
                 <tr key={msg.id}>
@@ -137,6 +138,8 @@ export function AdminCompliancePage() {
                   <td>{msg.channel}</td>
                   <td>{msg.recipient}</td>
                   <td>{msg.template}</td>
+                  <td>{msg.attempts}</td>
+                  <td>{msg.errorMessage ?? "—"}</td>
                   <td>
                     <select value={msg.status} onChange={(e) => void api.setCommunicationStatus(msg.id, e.target.value as "QUEUED" | "SENT" | "FAILED").then(load)}>
                       <option value="QUEUED">QUEUED</option>
