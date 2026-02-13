@@ -291,7 +291,4 @@ export interface SystemSettings {
     annualExamIntervalDays: number;
     enabledChannels: Array<"EMAIL" | "SMS">;
   };
-  communicationPolicy: {
-    maxAttempts: number;
-  };
 }

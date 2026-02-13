@@ -41,9 +41,6 @@ const settingsPatchSchema = z.object({
     vaccineLeadDays: z.number().int().nonnegative().optional(),
     annualExamIntervalDays: z.number().int().positive().optional(),
     enabledChannels: z.array(z.enum(["EMAIL", "SMS"]))
-  }).optional(),
-  communicationPolicy: z.object({
-    maxAttempts: z.number().int().positive().max(10).optional()
   }).optional()
 });
 const communicationStatusSchema = z.object({ status: z.enum(["QUEUED", "SENT", "FAILED"]) });

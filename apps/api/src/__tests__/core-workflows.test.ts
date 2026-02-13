@@ -60,9 +60,6 @@ function resetDb() {
       vaccineLeadDays: 30,
       annualExamIntervalDays: 365,
       enabledChannels: ["EMAIL", "SMS"]
-    },
-    communicationPolicy: {
-      maxAttempts: 3
     }
   };
   db.inventory = [
@@ -286,19 +283,4 @@ test("communication failed messages can be requeued and retried", () => {
   const processedAgain = processQueuedCommunications();
   assert.equal(processedAgain[0].status, "SENT");
   assert.equal(processedAgain[0].attempts, 2);
-});
-
-
-test("retry excludes communications that reached max attempts", () => {
-  resetDb();
-  updateSettings({ communicationPolicy: { maxAttempts: 1 } });
-  queueCommunication({ channel: "EMAIL", recipient: "invalid@recipient.local", template: "TEST_MAX_ATTEMPTS", context: { forceFail: true } });
-
-  const processed = processQueuedCommunications();
-  assert.equal(processed[0].status, "FAILED");
-  assert.equal(processed[0].attempts, 1);
-  assert.equal(processed[0].errorMessage, "Delivery failed: max attempts reached");
-
-  const retried = retryFailedCommunications();
-  assert.equal(retried.length, 0);
 });
