@@ -108,9 +108,8 @@ export const api = {
   listPermissions: () => request<{ rolePermissions: Record<UserRole, string[]> }>("/admin/permissions"),
   listStaff: () => request<{ items: Array<{ id: string; fullName: string; email: string; role: UserRole }> }>("/admin/staff"),
   updateStaffRole: (id: string, role: UserRole) => request(`/admin/staff/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
-  listCommunications: (limit = 100) => request<{ items: Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; attempts: number; lastAttemptAt?: string; nextRetryAt?: string; errorMessage?: string; createdAt: string }> }>(`/admin/communications?limit=${limit}`),
+  listCommunications: (limit = 100) => request<{ items: Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; attempts: number; lastAttemptAt?: string; errorMessage?: string; createdAt: string }> }>(`/admin/communications?limit=${limit}`),
   processCommunications: () => request<{ processed: Array<{ id: string }> }>("/admin/communications/process", { method: "POST" }),
-  retryDueCommunications: () => request<{ retried: Array<{ id: string }> }>("/admin/communications/retry-due", { method: "POST" }),
   retryFailedCommunications: () => request<{ retried: Array<{ id: string }> }>("/admin/communications/retry-failed", { method: "POST" }),
   runReminderSweep: (payload?: { dryRun?: boolean; referenceDateIso?: string }) => request<{ queued: number; vaccineDue: number; annualExamDue: number }>("/admin/communications/reminders/run", { method: "POST", body: JSON.stringify(payload ?? {}) }),
   setCommunicationStatus: (id: string, status: "QUEUED" | "SENT" | "FAILED") => request(`/admin/communications/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
@@ -128,7 +127,7 @@ export const api = {
   listAiDrafts: () => request<{ items: Array<{ id: string; kind: string; summary: string; confidence: number; status: string; createdAt: string }> }>("/ai/drafts"),
   updateAiDraftStatus: (id: string, status: "PENDING_REVIEW" | "APPROVED" | "REJECTED") => request(`/ai/drafts/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
 
-  getSettings: () => request<{ clinicName: string; timezone: string; defaultLanguage: "en" | "sk"; appointmentDefaultMinutes: number; reminder24hEnabled: boolean; integrations: Record<string, string>; reminderPolicy: { vaccineLeadDays: number; annualExamIntervalDays: number; enabledChannels: Array<"EMAIL" | "SMS"> }; communicationPolicy: { maxAttempts: number; retryBackoffMinutes: number } }>("/admin/settings"),
+  getSettings: () => request<{ clinicName: string; timezone: string; defaultLanguage: "en" | "sk"; appointmentDefaultMinutes: number; reminder24hEnabled: boolean; integrations: Record<string, string>; reminderPolicy: { vaccineLeadDays: number; annualExamIntervalDays: number; enabledChannels: Array<"EMAIL" | "SMS"> } }>("/admin/settings"),
   updateSettings: (patch: Record<string, unknown>) => request("/admin/settings", { method: "PATCH", body: JSON.stringify(patch) })
 };
 
