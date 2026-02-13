@@ -29,3 +29,7 @@ realtimeRouter.get("/events", (req, res) => {
   const interval = setInterval(send, 5000);
   req.on("close", () => clearInterval(interval));
 });
+
+realtimeRouter.get("/ws-info", (_req, res) => {
+  res.json({ urlPath: "/api/realtime/ws", auth: "query token" });
+});

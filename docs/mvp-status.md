@@ -25,3 +25,26 @@
 - Connect eKasa/CHUD transaction bridge for fiscal receipt compliance.
 - Implement deep production-grade UX for module internals (calendar grid, lot tracking, PDP/checkout, AI review diffs).
 - Execute WCAG audit and implement runnable E2E suite in CI.
+
+
+## Incremental build: waitlist + receivables aging + GDPR deletion execution
+- Scheduling now includes waitlist APIs and UI controls (add/status transitions) with automatic booking mark when an appointment is created for a waiting pet.
+- Billing receivables analytics now include aging buckets (0-30, 31-60, 61-90, 90+ days).
+- Compliance now includes GDPR deletion execution endpoint with blocker enforcement and cascade removal for client-linked records.
+
+
+## Incremental build: no-show lifecycle + no-show billing + returns
+- Scheduling now includes no-show logging endpoints and UI actions (`mark no-show` + no-show log list).
+- Billing now supports automated no-show fee invoice creation endpoint and UI action.
+- E-commerce now includes return request lifecycle (request/approve/reject/refunded) with admin-style status controls in UI.
+
+
+## Incremental build: communication outbox automation
+- No-show creation now queues automated follow-up SMS messages.
+- Return request creation/status updates now queue automated email messages.
+- Admin panel now includes communication outbox management with batch processing and manual status override.
+
+
+## Incremental build: proactive reminder automation
+- Added reminder sweep that auto-queues vaccine due reminders (30-day window) and annual exam reminders (>365 days since last visit).
+- Added admin endpoint/UI controls to run reminder sweeps and inspect queued counts in communication outbox.

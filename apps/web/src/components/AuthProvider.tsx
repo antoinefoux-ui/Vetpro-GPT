@@ -6,6 +6,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  setSession: (user: AuthUser, accessToken: string, refreshToken: string) => void;
   logout: () => Promise<void>;
 }
 
@@ -39,6 +40,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user as AuthUser);
   }
 
+  function setSession(nextUser: AuthUser, accessToken: string, refreshToken: string) {
+    localStorage.setItem("vetpro_access_token", accessToken);
+    localStorage.setItem("vetpro_refresh_token", refreshToken);
+    setUser(nextUser);
+  }
+
   async function logout() {
     const refreshToken = localStorage.getItem("vetpro_refresh_token");
     if (refreshToken) {
@@ -54,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }
 
-  const value = useMemo(() => ({ user, loading, login, logout }), [user, loading]);
+  const value = useMemo(() => ({ user, loading, login, setSession, logout }), [user, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -25,21 +25,23 @@ export function getClientTimeline(clientId: string): Array<Record<string, unknow
 
   const petIds = db.pets.filter((pet) => pet.clientId === clientId).map((pet) => pet.id);
 
-  const appointmentEvents = db.appointments
-    .filter((apt) => petIds.includes(apt.petId))
-    .map((apt) => ({ type: "APPOINTMENT", at: apt.startsAt, payload: apt }));
+  const events = [
+    ...db.appointments
+      .filter((apt) => petIds.includes(apt.petId))
+      .map((apt) => ({ type: "APPOINTMENT", at: apt.startsAt, payload: apt })),
+    ...db.invoices
+      .filter((inv) => inv.clientId === clientId)
+      .map((inv) => ({ type: "INVOICE", at: inv.createdAt, payload: inv })),
+    ...db.payments
+      .filter((p) => db.invoices.some((inv) => inv.id === p.invoiceId && inv.clientId === clientId))
+      .map((payment) => ({ type: "PAYMENT", at: payment.createdAt, payload: payment })),
+    ...db.vaccines.filter((v) => petIds.includes(v.petId)).map((v) => ({ type: "VACCINE", at: v.administeredAt, payload: v })),
+    ...db.labs.filter((l) => petIds.includes(l.petId)).map((l) => ({ type: "LAB", at: l.recordedAt, payload: l })),
+    ...db.imaging.filter((i) => petIds.includes(i.petId)).map((i) => ({ type: "IMAGING", at: i.recordedAt, payload: i })),
+    ...db.surgeries.filter((s) => petIds.includes(s.petId)).map((s) => ({ type: "SURGERY", at: s.startedAt, payload: s }))
+  ];
 
-  const invoiceEvents = db.invoices
-    .filter((inv) => inv.clientId === clientId)
-    .map((inv) => ({ type: "INVOICE", at: inv.createdAt, payload: inv }));
-
-  const paymentEvents = db.payments
-    .filter((p) => db.invoices.some((inv) => inv.id === p.invoiceId && inv.clientId === clientId))
-    .map((payment) => ({ type: "PAYMENT", at: payment.createdAt, payload: payment }));
-
-  return [...appointmentEvents, ...invoiceEvents, ...paymentEvents].sort((a, b) =>
-    String(a.at).localeCompare(String(b.at))
-  );
+  return events.sort((a, b) => String(a.at).localeCompare(String(b.at)));
 }
 
 export function createClient(input: Omit<Client, "id" | "createdAt">): Client {

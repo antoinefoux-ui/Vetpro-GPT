@@ -6,7 +6,7 @@ import { useI18n } from "../lib/i18n";
 import { email, minLength, validate } from "../lib/validation";
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, setSession } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "admin@vetpro.local", password: "password123" });
@@ -40,6 +40,17 @@ export function LoginPage() {
     }
   }
 
+
+  async function loginWithGoogle() {
+    try {
+      const result = await api.oauthGoogle(`demo-google-token-${Date.now()}`);
+      setSession(result.user, result.accessToken, result.refreshToken);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
   async function requestReset() {
     try {
       const response = await api.requestPasswordReset(resetEmail);
@@ -70,6 +81,7 @@ export function LoginPage() {
           <label>Password<input aria-label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} minLength={8} required /></label>
           {error ? <p className="error">{error}</p> : null}
           <button type="submit" disabled={loading}>{loading ? "Signing in…" : "Sign In"}</button>
+          <button type="button" onClick={() => void loginWithGoogle()}>Sign in with Google</button>
         </form>
 
         <article className="card auth-card">

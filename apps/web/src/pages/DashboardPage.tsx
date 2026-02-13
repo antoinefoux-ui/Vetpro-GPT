@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import { eventStreamUrl } from "../lib/api";
+import { eventStreamUrl, websocketUrl } from "../lib/api";
 import { useI18n } from "../lib/i18n";
 import { useEventStream } from "../hooks/useEventStream";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 interface RealtimeStats {
   timestamp: string;
@@ -18,12 +19,13 @@ export function DashboardPage() {
   }, []);
 
   useEventStream(eventStreamUrl, onData);
+  useWebSocket(websocketUrl, onData);
 
   return (
     <div>
       <header className="page-header stack">
         <h2>{t("dashboard")}</h2>
-        <p>Live dashboard now receives server-side real-time events (SSE) in addition to polling patterns.</p>
+        <p>Live dashboard now receives server-side real-time events (SSE + WebSocket) in addition to polling patterns.</p>
         <div className="quick-actions">
           <Link className="button-link" to="/crm">Open CRM</Link>
           <Link className="button-link" to="/appointments">Open Calendar</Link>

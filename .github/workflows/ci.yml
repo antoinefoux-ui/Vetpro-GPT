@@ -22,6 +22,9 @@ jobs:
       - name: Test API
         run: npm run test
         working-directory: apps/api
+      - name: Run API E2E smoke tests
+        run: npm run test:e2e
+        working-directory: apps/api
       - name: Install Web dependencies
         run: npm install
         working-directory: apps/web

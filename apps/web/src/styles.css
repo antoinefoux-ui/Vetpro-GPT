@@ -236,3 +236,5 @@ td {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   width: min(900px, 100%);
 }
+
+.skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}.skip-link:focus{left:1rem;top:1rem;width:auto;height:auto;background:#111;color:#fff;padding:.5rem;z-index:1000}

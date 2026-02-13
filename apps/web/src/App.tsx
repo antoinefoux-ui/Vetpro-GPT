@@ -32,6 +32,7 @@ function Shell({ children }: { children: JSX.Element }) {
 
   return (
     <div className="layout">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <aside className="sidebar" aria-label="Primary navigation">
         <h1>VetPro GPT</h1>
         <p className="muted small">{user?.fullName} · {user?.role}</p>
@@ -54,7 +55,7 @@ function Shell({ children }: { children: JSX.Element }) {
         </nav>
         <button className="logout-btn" onClick={() => void logout()}>{t("logout")}</button>
       </aside>
-      <main className="content">{children}</main>
+      <main id="main-content" className="content" tabIndex={-1}>{children}</main>
     </div>
   );
 }

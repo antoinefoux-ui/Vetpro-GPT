@@ -3,58 +3,38 @@ import { api } from "../lib/api";
 import type { Appointment } from "../types/app";
 import { usePolling } from "../hooks/usePolling";
 
-function startOfWeek(date: Date): Date {
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  const out = new Date(date);
-  out.setDate(diff);
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
-
 export function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [view, setView] = useState<"day" | "week" | "month">("week");
+  const [grid, setGrid] = useState<Record<string, Appointment[]>>({});
+  const [anchorDate, setAnchorDate] = useState<string>(new Date().toISOString());
   const [error, setError] = useState<string | null>(null);
+  const [waitlist, setWaitlist] = useState<Array<{ id: string; petId: string; reason: string; status: string }>>([]);
+  const [noShows, setNoShows] = useState<Array<{ id: string; appointmentId: string; clientId: string; petId: string; reason?: string }>>([]);
   const [form, setForm] = useState({ petId: "", type: "Consultation", startsAt: "", endsAt: "" });
+  const [waitlistForm, setWaitlistForm] = useState({ petId: "", reason: "Follow-up needed" });
 
   const load = useCallback(async () => {
     try {
-      const response = await api.listAppointments();
+      const [response, gridRes, waitlistRes, noShowRes] = await Promise.all([api.listAppointments(), api.getCalendarGrid(view, anchorDate), api.listWaitlist(), api.listNoShows()]);
       setAppointments(response.items);
+      setGrid(gridRes.buckets);
+      setWaitlist(waitlistRes.items);
+      setNoShows(noShowRes.items);
     } catch (err) {
       setError((err as Error).message);
     }
-  }, []);
+  }, [anchorDate, view]);
 
   usePolling(load, 5000);
 
-  const weekly = useMemo(() => {
-    const weekStart = startOfWeek(new Date());
-    const byDay: Record<string, Appointment[]> = { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [] };
-    const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    for (const apt of appointments) {
-      const date = new Date(apt.startsAt);
-      if (date >= weekStart && date < new Date(weekStart.getTime() + 7 * 86400000)) {
-        byDay[labels[date.getDay()]].push(apt);
-      }
-    }
-    return byDay;
-  }, [appointments]);
+  const sortedKeys = useMemo(() => Object.keys(grid).sort(), [grid]);
 
   async function create(event: FormEvent) {
     event.preventDefault();
-    if (!form.petId || !form.startsAt || !form.endsAt) {
-      setError("petId, start and end are required");
-      return;
-    }
-
+    if (!form.petId || !form.startsAt || !form.endsAt) return setError("petId, start and end are required");
     try {
-      await api.createAppointment({
-        petId: form.petId,
-        type: form.type,
-        startsAt: new Date(form.startsAt).toISOString(),
-        endsAt: new Date(form.endsAt).toISOString()
-      });
+      await api.createAppointment({ petId: form.petId, type: form.type, startsAt: new Date(form.startsAt).toISOString(), endsAt: new Date(form.endsAt).toISOString() });
       setForm({ petId: "", type: "Consultation", startsAt: "", endsAt: "" });
       setError(null);
       await load();
@@ -63,21 +43,34 @@ export function AppointmentsPage() {
     }
   }
 
-  async function updateStatus(id: string, status: Appointment["status"]) {
+
+  async function addWaitlist() {
+    if (!waitlistForm.petId) return setError("waitlist petId is required");
     try {
-      await api.setAppointmentStatus(id, status);
+      await api.addWaitlist({ petId: waitlistForm.petId, reason: waitlistForm.reason });
+      setWaitlistForm({ petId: "", reason: "Follow-up needed" });
       await load();
     } catch (err) {
       setError((err as Error).message);
     }
   }
 
-
-  async function assignResource(id: string) {
-    const room = prompt("Assign room (e.g., Room 2)") ?? undefined;
-    const equipment = prompt("Assign equipment (optional)") ?? undefined;
+  async function markNoShow(id: string) {
+    const reason = prompt("No-show reason", "Client did not arrive") ?? undefined;
     try {
-      await api.setAppointmentResources(id, room, equipment);
+      await api.markNoShow(id, reason);
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function moveAppointment(id: string) {
+    const startsAt = prompt("New start (ISO)", new Date().toISOString());
+    const endsAt = prompt("New end (ISO)", new Date(Date.now() + 30 * 60000).toISOString());
+    if (!startsAt || !endsAt) return;
+    try {
+      await api.moveAppointment(id, startsAt, endsAt);
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -87,6 +80,16 @@ export function AppointmentsPage() {
   return (
     <section>
       <h2>Appointments</h2>
+      <div className="inline-actions">
+        <label>View
+          <select value={view} onChange={(e) => setView(e.target.value as "day" | "week" | "month")}>
+            <option value="day">Day</option><option value="week">Week</option><option value="month">Month</option>
+          </select>
+        </label>
+        <label>Anchor Date
+          <input type="datetime-local" value={anchorDate.slice(0, 16)} onChange={(e) => setAnchorDate(new Date(e.target.value).toISOString())} />
+        </label>
+      </div>
       <div className="grid">
         <article className="card">
           <h3>New Appointment</h3>
@@ -100,30 +103,63 @@ export function AppointmentsPage() {
         </article>
 
         <article className="card">
-          <h3>Week View (basic)</h3>
+          <h3>{view.toUpperCase()} Grid</h3>
           <table>
-            <thead><tr><th>Day</th><th>Appointments</th></tr></thead>
+            <thead><tr><th>Bucket</th><th>Slots</th></tr></thead>
             <tbody>
-              {Object.entries(weekly).map(([day, rows]) => (
-                <tr key={day}><td>{day}</td><td>{rows.map((r) => `${new Date(r.startsAt).toLocaleTimeString()} ${r.type} (${r.status})`).join("; ") || "—"}</td></tr>
+              {sortedKeys.map((key) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  <td>{grid[key].map((r) => `${new Date(r.startsAt).toLocaleString()} ${r.type} (${r.status})`).join("; ") || "—"}</td>
+                </tr>
               ))}
             </tbody>
           </table>
         </article>
 
         <article className="card">
-          <h3>Calendar Feed</h3>
+          <h3>Calendar Feed + Drag/Drop Simulation</h3>
           <ul>
             {appointments.map((appointment) => (
               <li key={appointment.id}>
                 {appointment.type} · {new Date(appointment.startsAt).toLocaleString()} · <strong>{appointment.status}</strong>
                 <div className="inline-actions">
-{(["CONFIRMED", "CHECKED_IN", "COMPLETED", "CANCELED"] as const).map((status) => (
-                    <button key={status} onClick={() => updateStatus(appointment.id, status)}>{status}</button>
-                  ))}
-                  <button onClick={() => void assignResource(appointment.id)}>Assign room/equipment</button>
+                  <button onClick={() => void moveAppointment(appointment.id)}>Move (drag/drop)</button>
+                  <button onClick={() => void markNoShow(appointment.id)}>Mark no-show</button>
+                  <button onClick={() => void api.setAppointmentResources(appointment.id, "Room 1", "Ultrasound").then(load)}>Assign resources</button>
                 </div>
               </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="card">
+          <h3>Waitlist</h3>
+          <div className="inline-actions">
+            <input placeholder="Pet ID" value={waitlistForm.petId} onChange={(e) => setWaitlistForm({ ...waitlistForm, petId: e.target.value })} />
+            <input placeholder="Reason" value={waitlistForm.reason} onChange={(e) => setWaitlistForm({ ...waitlistForm, reason: e.target.value })} />
+            <button onClick={() => void addWaitlist()}>Add to waitlist</button>
+          </div>
+          <ul>
+            {waitlist.map((entry) => (
+              <li key={entry.id}>
+                {entry.petId} · {entry.reason} · {entry.status}
+                <div className="inline-actions">
+                  <button onClick={() => void api.setWaitlistStatus(entry.id, "CONTACTED").then(load)}>CONTACTED</button>
+                  <button onClick={() => void api.setWaitlistStatus(entry.id, "BOOKED").then(load)}>BOOKED</button>
+                  <button onClick={() => void api.setWaitlistStatus(entry.id, "CANCELED").then(load)}>CANCELED</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+
+        <article className="card">
+          <h3>No-show Log</h3>
+          <ul>
+            {noShows.map((row) => (
+              <li key={row.id}>{row.appointmentId} · pet {row.petId} · client {row.clientId} · {row.reason ?? "No reason"}</li>
             ))}
           </ul>
         </article>
