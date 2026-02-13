@@ -283,4 +283,9 @@ export interface SystemSettings {
     stripePublicKey?: string;
     ekasaEndpoint?: string;
   };
+  reminderPolicy: {
+    vaccineLeadDays: number;
+    annualExamIntervalDays: number;
+    enabledChannels: Array<"EMAIL" | "SMS">;
+  };
 }

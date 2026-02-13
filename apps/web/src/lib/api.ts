@@ -110,7 +110,7 @@ export const api = {
   updateStaffRole: (id: string, role: UserRole) => request(`/admin/staff/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
   listCommunications: (limit = 100) => request<{ items: Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; createdAt: string }> }>(`/admin/communications?limit=${limit}`),
   processCommunications: () => request<{ processed: Array<{ id: string }> }>("/admin/communications/process", { method: "POST" }),
-  runReminderSweep: () => request<{ queued: number; vaccineDue: number; annualExamDue: number }>("/admin/communications/reminders/run", { method: "POST" }),
+  runReminderSweep: (payload?: { dryRun?: boolean; referenceDateIso?: string }) => request<{ queued: number; vaccineDue: number; annualExamDue: number }>("/admin/communications/reminders/run", { method: "POST", body: JSON.stringify(payload ?? {}) }),
   setCommunicationStatus: (id: string, status: "QUEUED" | "SENT" | "FAILED") => request(`/admin/communications/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   listStaffCredentials: (userId?: string) => request<{ items: StaffCredential[] }>(`/admin/staff/credentials${userId ? `?userId=${userId}` : ""}`),
   createStaffCredential: (payload: { userId: string; credentialType: StaffCredential["credentialType"]; credentialNumber?: string; expiresAt?: string }) => request("/admin/staff/credentials", { method: "POST", body: JSON.stringify(payload) }),
@@ -126,7 +126,7 @@ export const api = {
   listAiDrafts: () => request<{ items: Array<{ id: string; kind: string; summary: string; confidence: number; status: string; createdAt: string }> }>("/ai/drafts"),
   updateAiDraftStatus: (id: string, status: "PENDING_REVIEW" | "APPROVED" | "REJECTED") => request(`/ai/drafts/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
 
-  getSettings: () => request<{ clinicName: string; timezone: string; defaultLanguage: "en" | "sk"; appointmentDefaultMinutes: number; reminder24hEnabled: boolean; integrations: Record<string, string> }>("/admin/settings"),
+  getSettings: () => request<{ clinicName: string; timezone: string; defaultLanguage: "en" | "sk"; appointmentDefaultMinutes: number; reminder24hEnabled: boolean; integrations: Record<string, string>; reminderPolicy: { vaccineLeadDays: number; annualExamIntervalDays: number; enabledChannels: Array<"EMAIL" | "SMS"> } }>("/admin/settings"),
   updateSettings: (patch: Record<string, unknown>) => request("/admin/settings", { method: "PATCH", body: JSON.stringify(patch) })
 };
 

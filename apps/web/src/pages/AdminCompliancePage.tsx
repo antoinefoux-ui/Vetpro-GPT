@@ -9,7 +9,7 @@ export function AdminCompliancePage() {
   const [credentials, setCredentials] = useState<StaffCredential[]>([]);
   const [permissions, setPermissions] = useState<Record<string, string[]>>({});
   const [gdpr, setGdpr] = useState<Array<{ id: string; clientId: string; type: string; status: string; createdAt: string }>>([]);
-  const [settings, setSettings] = useState({ clinicName: "", timezone: "Europe/Bratislava", defaultLanguage: "sk" as "en" | "sk", appointmentDefaultMinutes: 30, reminder24hEnabled: true, integrations: { googleCalendarApiKey: "", sendgridApiKey: "", smsProviderKey: "", stripePublicKey: "", ekasaEndpoint: "" } });
+  const [settings, setSettings] = useState({ clinicName: "", timezone: "Europe/Bratislava", defaultLanguage: "sk" as "en" | "sk", appointmentDefaultMinutes: 30, reminder24hEnabled: true, integrations: { googleCalendarApiKey: "", sendgridApiKey: "", smsProviderKey: "", stripePublicKey: "", ekasaEndpoint: "" }, reminderPolicy: { vaccineLeadDays: 30, annualExamIntervalDays: 365, enabledChannels: ["EMAIL", "SMS"] as Array<"EMAIL" | "SMS"> } });
   const [communications, setCommunications] = useState<Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; createdAt: string }>>([]);
   const [gdprPreview, setGdprPreview] = useState("");
   const [gdprDeleteCheck, setGdprDeleteCheck] = useState("");
@@ -17,6 +17,7 @@ export function AdminCompliancePage() {
   const [credentialForm, setCredentialForm] = useState({ userId: "", credentialType: "DVM" as StaffCredential["credentialType"], credentialNumber: "", expiresAt: "" });
   const [error, setError] = useState<string | null>(null);
   const [reminderResult, setReminderResult] = useState<{ queued: number; vaccineDue: number; annualExamDue: number } | null>(null);
+  const [reminderRunDate, setReminderRunDate] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -42,6 +43,14 @@ export function AdminCompliancePage() {
   async function previewGdpr(clientId: string) { try { const [pkg, check] = await Promise.all([api.getGdprExportPackage(clientId), api.getGdprDeleteCheck(clientId)]); setGdprPreview(JSON.stringify(pkg.package, null, 2)); setGdprDeleteCheck(JSON.stringify(check, null, 2)); } catch (err) { setError((err as Error).message); } }
   async function saveSettings(event: FormEvent) { event.preventDefault(); try { await api.updateSettings(settings); await load(); } catch (err) { setError((err as Error).message); } }
 
+  async function runReminders(dryRun: boolean) {
+    try {
+      const result = await api.runReminderSweep({ dryRun, referenceDateIso: reminderRunDate ? new Date(reminderRunDate).toISOString() : undefined });
+      setReminderResult(result);
+      await load();
+    } catch (err) { setError((err as Error).message); }
+  }
+
   async function createCredential(event: FormEvent) {
     event.preventDefault();
     try {
@@ -62,6 +71,9 @@ export function AdminCompliancePage() {
             <label>Clinic Name<input value={settings.clinicName} onChange={(e) => setSettings({ ...settings, clinicName: e.target.value })} /></label>
             <label>Timezone<input value={settings.timezone} onChange={(e) => setSettings({ ...settings, timezone: e.target.value })} /></label>
             <label>Language<select value={settings.defaultLanguage} onChange={(e) => setSettings({ ...settings, defaultLanguage: e.target.value as "en" | "sk" })}><option value="en">en</option><option value="sk">sk</option></select></label>
+            <label>Vaccine lead days<input type="number" min={0} value={settings.reminderPolicy.vaccineLeadDays} onChange={(e) => setSettings({ ...settings, reminderPolicy: { ...settings.reminderPolicy, vaccineLeadDays: Number(e.target.value) } })} /></label>
+            <label>Annual exam interval days<input type="number" min={1} value={settings.reminderPolicy.annualExamIntervalDays} onChange={(e) => setSettings({ ...settings, reminderPolicy: { ...settings.reminderPolicy, annualExamIntervalDays: Number(e.target.value) } })} /></label>
+            <label>Reminder channels<select multiple value={settings.reminderPolicy.enabledChannels} onChange={(e) => { const selected = Array.from(e.target.selectedOptions).map((o) => o.value as "EMAIL" | "SMS"); setSettings({ ...settings, reminderPolicy: { ...settings.reminderPolicy, enabledChannels: selected.length ? selected : settings.reminderPolicy.enabledChannels } }); }}><option value="EMAIL">EMAIL</option><option value="SMS">SMS</option></select></label>
             <label>Google API key<input value={settings.integrations.googleCalendarApiKey} onChange={(e) => setSettings({ ...settings, integrations: { ...settings.integrations, googleCalendarApiKey: e.target.value } })} /></label>
             <label>SMS Provider<input value={settings.integrations.smsProviderKey} onChange={(e) => setSettings({ ...settings, integrations: { ...settings.integrations, smsProviderKey: e.target.value } })} /></label>
             <label>eKasa Endpoint<input value={settings.integrations.ekasaEndpoint} onChange={(e) => setSettings({ ...settings, integrations: { ...settings.integrations, ekasaEndpoint: e.target.value } })} /></label>
@@ -112,7 +124,9 @@ export function AdminCompliancePage() {
           <h3>Communication Outbox</h3>
           <div className="inline-actions">
             <button onClick={() => void api.processCommunications().then(load)}>Process queued</button>
-            <button onClick={() => void api.runReminderSweep().then((result) => { setReminderResult(result); return load(); })}>Run reminder sweep</button>
+            <label>Reference date<input type="date" value={reminderRunDate} onChange={(e) => setReminderRunDate(e.target.value)} /></label>
+            <button onClick={() => void runReminders(false)}>Run reminder sweep</button>
+            <button onClick={() => void runReminders(true)}>Dry run reminder sweep</button>
           </div>
           <table>
             <thead><tr><th>Time</th><th>Channel</th><th>Recipient</th><th>Template</th><th>Status</th></tr></thead>
@@ -140,7 +154,6 @@ export function AdminCompliancePage() {
         <article className="card">
           <h3>Audit Log Explorer</h3>
           <table><thead><tr><th>Time</th><th>Action</th><th>Entity</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id}><td>{new Date(log.createdAt).toLocaleString()}</td><td>{log.action}</td><td>{log.entityType}</td></tr>)}</tbody></table>
-          {reminderResult ? <p className="muted">Queued: {reminderResult.queued} (Vaccines: {reminderResult.vaccineDue}, Annual exams: {reminderResult.annualExamDue})</p> : null}
         </article>
       </div>
     </section>

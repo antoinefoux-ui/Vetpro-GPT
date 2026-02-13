@@ -5,12 +5,20 @@ function daysBetween(a: Date, b: Date): number {
   return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export function runReminderSweep(referenceDateIso = new Date().toISOString()): {
+function preferredChannel(hasEmail: boolean): "EMAIL" | "SMS" {
+  const enabled = db.settings.reminderPolicy.enabledChannels;
+  if (hasEmail && enabled.includes("EMAIL")) return "EMAIL";
+  if (enabled.includes("SMS")) return "SMS";
+  return "EMAIL";
+}
+
+export function runReminderSweep(referenceDateIso = new Date().toISOString(), options?: { dryRun?: boolean }): {
   queued: number;
   vaccineDue: number;
   annualExamDue: number;
 } {
   const referenceDate = new Date(referenceDateIso);
+  const policy = db.settings.reminderPolicy;
   let queued = 0;
   let vaccineDue = 0;
   let annualExamDue = 0;
@@ -19,19 +27,21 @@ export function runReminderSweep(referenceDateIso = new Date().toISOString()): {
     if (!vaccine.dueAt) continue;
     const dueDate = new Date(vaccine.dueAt);
     const daysUntil = daysBetween(dueDate, referenceDate);
-    if (daysUntil < 0 || daysUntil > 30) continue;
+    if (daysUntil < 0 || daysUntil > policy.vaccineLeadDays) continue;
 
     const pet = db.pets.find((p) => p.id === vaccine.petId);
     if (!pet) continue;
     const client = db.clients.find((c) => c.id === pet.clientId);
     if (!client) continue;
 
-    queueCommunication({
-      channel: client.email ? "EMAIL" : "SMS",
-      recipient: client.email ?? client.phone,
-      template: "VACCINE_DUE_REMINDER",
-      context: { petId: pet.id, vaccineName: vaccine.vaccineName, dueAt: vaccine.dueAt }
-    });
+    if (!options?.dryRun) {
+      queueCommunication({
+        channel: preferredChannel(Boolean(client.email)),
+        recipient: client.email ?? client.phone,
+        template: "VACCINE_DUE_REMINDER",
+        context: { petId: pet.id, vaccineName: vaccine.vaccineName, dueAt: vaccine.dueAt }
+      });
+    }
     queued += 1;
     vaccineDue += 1;
   }
@@ -44,17 +54,19 @@ export function runReminderSweep(referenceDateIso = new Date().toISOString()): {
     if (!lastVisit) continue;
 
     const daysSince = daysBetween(referenceDate, new Date(lastVisit.startsAt));
-    if (daysSince < 365) continue;
+    if (daysSince < policy.annualExamIntervalDays) continue;
 
     const client = db.clients.find((c) => c.id === pet.clientId);
     if (!client) continue;
 
-    queueCommunication({
-      channel: client.email ? "EMAIL" : "SMS",
-      recipient: client.email ?? client.phone,
-      template: "ANNUAL_EXAM_REMINDER",
-      context: { petId: pet.id, lastVisit: lastVisit.startsAt, daysSince }
-    });
+    if (!options?.dryRun) {
+      queueCommunication({
+        channel: preferredChannel(Boolean(client.email)),
+        recipient: client.email ?? client.phone,
+        template: "ANNUAL_EXAM_REMINDER",
+        context: { petId: pet.id, lastVisit: lastVisit.startsAt, daysSince }
+      });
+    }
     queued += 1;
     annualExamDue += 1;
   }

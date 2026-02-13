@@ -36,9 +36,18 @@ const settingsPatchSchema = z.object({
     smsProviderKey: z.string().optional(),
     stripePublicKey: z.string().optional(),
     ekasaEndpoint: z.string().optional()
+  }).optional(),
+  reminderPolicy: z.object({
+    vaccineLeadDays: z.number().int().nonnegative().optional(),
+    annualExamIntervalDays: z.number().int().positive().optional(),
+    enabledChannels: z.array(z.enum(["EMAIL", "SMS"]))
   }).optional()
 });
 const communicationStatusSchema = z.object({ status: z.enum(["QUEUED", "SENT", "FAILED"]) });
+const reminderRunSchema = z.object({
+  dryRun: z.boolean().optional(),
+  referenceDateIso: z.string().datetime().optional()
+});
 
 const credentialSchema = z.object({
   userId: z.string().min(1),
@@ -182,13 +191,15 @@ adminRouter.post("/communications/process", requirePermission("admin.write"), as
 
 
 adminRouter.post("/communications/reminders/run", requirePermission("admin.write"), async (req, res) => {
-  const result = runReminderSweep();
+  const parsed = reminderRunSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json(parsed.error.flatten());
+  const result = runReminderSweep(parsed.data.referenceDateIso, { dryRun: parsed.data.dryRun });
   await logAuditEvent({
     userId: req.user!.id,
     action: "REMINDER_SWEEP_RUN",
     entityType: "Communication",
     entityId: `reminder-${Date.now()}`,
-    metadata: result as unknown as Record<string, unknown>,
+    metadata: { ...result, dryRun: parsed.data.dryRun ?? false } as unknown as Record<string, unknown>,
     ipAddress: req.ip
   });
   return res.json(result);

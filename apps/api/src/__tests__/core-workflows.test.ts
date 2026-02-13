@@ -16,6 +16,7 @@ import { approveDeletion, createGdprRequest, executeDeletion, placeLegalHold, se
 import { addOrderLine, checkoutOrder, createCart, createReturnRequest, updateOrderStatus, updateReturnRequestStatus } from "../services/commerce.service.js";
 import { createVaccine } from "../services/clinical.service.js";
 import { runReminderSweep } from "../services/reminder.service.js";
+import { updateSettings } from "../services/settings.service.js";
 
 function resetDb() {
   db.users = [];
@@ -41,6 +42,25 @@ function resetDb() {
   db.passwordResetTokens = [];
   db.auditLogs = [];
   db.gdprRequests = [];
+  db.settings = {
+    clinicName: "VetPro Clinic",
+    timezone: "Europe/Bratislava",
+    defaultLanguage: "sk",
+    appointmentDefaultMinutes: 30,
+    reminder24hEnabled: true,
+    integrations: {
+      googleCalendarApiKey: "",
+      sendgridApiKey: "",
+      smsProviderKey: "",
+      stripePublicKey: "",
+      ekasaEndpoint: ""
+    },
+    reminderPolicy: {
+      vaccineLeadDays: 30,
+      annualExamIntervalDays: 365,
+      enabledChannels: ["EMAIL", "SMS"]
+    }
+  };
   db.inventory = [
     { id: "item_1", sku: "MED-OTOMAX", name: "Otomax Otic Ointment", unit: "tube", stockOnHand: 12, minStock: 10, unitPrice: 25 },
     { id: "item_2", sku: "MED-CONVENIA", name: "Convenia", unit: "mg", stockOnHand: 1000, minStock: 300, unitPrice: 0.4 }
@@ -215,4 +235,30 @@ test("reminder sweep queues vaccine and annual exam reminders", () => {
   assert.equal(result.annualExamDue, 1);
   assert.ok(db.communications.some((m) => m.template === "VACCINE_DUE_REMINDER"));
   assert.ok(db.communications.some((m) => m.template === "ANNUAL_EXAM_REMINDER"));
+});
+
+
+test("reminder policy and dry-run behavior", () => {
+  resetDb();
+  const client = createClient({ firstName: "Dry", lastName: "Run", phone: "+421900006666", email: "dry@example.com" });
+  const pet = createPet({ clientId: client.id, name: "Nova", species: "Dog" });
+
+  createVaccine({
+    petId: pet.id,
+    vaccineName: "Distemper",
+    administeredAt: new Date("2026-01-01T10:00:00.000Z").toISOString(),
+    dueAt: new Date("2026-02-15T10:00:00.000Z").toISOString()
+  });
+
+  updateSettings({ reminderPolicy: { vaccineLeadDays: 10, enabledChannels: ["SMS"] } });
+  const before = db.communications.length;
+  const dryRun = runReminderSweep(new Date("2026-01-05T10:00:00.000Z").toISOString(), { dryRun: true });
+  assert.equal(dryRun.queued, 0);
+  assert.equal(db.communications.length, before);
+
+  updateSettings({ reminderPolicy: { vaccineLeadDays: 50, enabledChannels: ["SMS"] } });
+  const run = runReminderSweep(new Date("2026-01-05T10:00:00.000Z").toISOString());
+  assert.equal(run.vaccineDue, 1);
+  const queued = db.communications.find((m) => m.template === "VACCINE_DUE_REMINDER");
+  assert.equal(queued?.channel, "SMS");
 });

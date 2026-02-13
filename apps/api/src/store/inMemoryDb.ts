@@ -106,6 +106,11 @@ export const db: DbState = {
       smsProviderKey: "",
       stripePublicKey: "",
       ekasaEndpoint: ""
+    },
+    reminderPolicy: {
+      vaccineLeadDays: 30,
+      annualExamIntervalDays: 365,
+      enabledChannels: ["EMAIL", "SMS"]
     }
   }
 };
