@@ -153,7 +153,6 @@ export function AppointmentsPage() {
             ))}
           </ul>
         </article>
-      </div>
 
 
         <article className="card">
@@ -164,6 +163,7 @@ export function AppointmentsPage() {
             ))}
           </ul>
         </article>
+      </div>
       {error ? <p className="error">{error}</p> : null}
     </section>
   );

@@ -2,6 +2,7 @@ import { db } from "../store/inMemoryDb.js";
 import type { Appointment, AppointmentStatus, NoShowRecord, WaitlistEntry } from "../types/domain.js";
 import { makeId } from "../utils/id.js";
 import { nowIso } from "../utils/time.js";
+import { queueCommunication } from "./communication.service.js";
 
 function overlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
   return startA < endB && startB < endA;
@@ -161,6 +162,15 @@ export function markNoShow(appointmentId: string, reason?: string): NoShowRecord
     createdAt: nowIso()
   };
   db.noShows.unshift(row);
+  const client = db.clients.find((c) => c.id === pet.clientId);
+  if (client?.phone) {
+    queueCommunication({
+      channel: "SMS",
+      recipient: client.phone,
+      template: "NO_SHOW_FOLLOW_UP",
+      context: { appointmentId, petId: pet.id, reason }
+    });
+  }
   return row;
 }
 

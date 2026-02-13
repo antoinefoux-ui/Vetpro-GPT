@@ -126,8 +126,8 @@ export function BillingPage() {
             ))}
           </ul>
           <div className="inline-actions">
-            <button disabled={!selected} onClick={() => void selected && api.approveInvoice(selected.id).then(load)}>Approve invoice</button>
-            <button disabled={!selected} onClick={() => void selected && api.fiscalizeInvoice(selected.id).then(load)}>Send to eKasa</button>
+            <button disabled={!selected} onClick={() => { if (!selected) return; void api.approveInvoice(selected.id).then(load); }}>Approve invoice</button>
+            <button disabled={!selected} onClick={() => { if (!selected) return; void api.fiscalizeInvoice(selected.id).then(load); }}>Send to eKasa</button>
           </div>
         </article>
 

@@ -2,6 +2,7 @@ import { db } from "../store/inMemoryDb.js";
 import type { EcommerceOrder, EcommerceOrderLine, EcommerceProduct } from "../types/domain.js";
 import { makeId } from "../utils/id.js";
 import { nowIso } from "../utils/time.js";
+import { queueCommunication } from "./communication.service.js";
 
 function recalc(lines: EcommerceOrderLine[]) {
   const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
@@ -99,6 +100,7 @@ export function createReturnRequest(orderId: string, reason: string) {
   if (!["PAID", "SHIPPED", "DELIVERED"].includes(order.status)) throw new Error("Order not eligible for return request");
   const row = { id: makeId("ret"), orderId, reason, status: "REQUESTED" as const, createdAt: nowIso() };
   db.returnRequests.unshift(row);
+  queueCommunication({ channel: "EMAIL", recipient: order.email, template: "RETURN_REQUEST_RECEIVED", context: { orderId, reason } });
   return row;
 }
 
@@ -106,9 +108,10 @@ export function updateReturnRequestStatus(id: string, status: "REQUESTED" | "APP
   const row = db.returnRequests.find((r) => r.id === id);
   if (!row) throw new Error("Return request not found");
   row.status = status;
+  const order = getOrder(row.orderId);
   if (status === "REFUNDED") {
-    const order = getOrder(row.orderId);
     order.status = "REFUNDED";
   }
+  queueCommunication({ channel: "EMAIL", recipient: order.email, template: "RETURN_STATUS_UPDATED", context: { orderId: row.orderId, status } });
   return row;
 }

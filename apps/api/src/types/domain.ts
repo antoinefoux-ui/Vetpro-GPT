@@ -215,6 +215,16 @@ export interface EcommerceOrder {
   createdAt: string;
 }
 
+export interface CommunicationLog {
+  id: string;
+  channel: "EMAIL" | "SMS";
+  recipient: string;
+  template: string;
+  status: "QUEUED" | "SENT" | "FAILED";
+  context?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface ReturnRequest {
   id: string;
   orderId: string;

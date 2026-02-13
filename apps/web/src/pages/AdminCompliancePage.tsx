@@ -10,6 +10,7 @@ export function AdminCompliancePage() {
   const [permissions, setPermissions] = useState<Record<string, string[]>>({});
   const [gdpr, setGdpr] = useState<Array<{ id: string; clientId: string; type: string; status: string; createdAt: string }>>([]);
   const [settings, setSettings] = useState({ clinicName: "", timezone: "Europe/Bratislava", defaultLanguage: "sk" as "en" | "sk", appointmentDefaultMinutes: 30, reminder24hEnabled: true, integrations: { googleCalendarApiKey: "", sendgridApiKey: "", smsProviderKey: "", stripePublicKey: "", ekasaEndpoint: "" } });
+  const [communications, setCommunications] = useState<Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; createdAt: string }>>([]);
   const [gdprPreview, setGdprPreview] = useState("");
   const [gdprDeleteCheck, setGdprDeleteCheck] = useState("");
   const [form, setForm] = useState({ clientId: "", type: "EXPORT" as "EXPORT" | "DELETE" });
@@ -18,8 +19,8 @@ export function AdminCompliancePage() {
 
   const load = useCallback(async () => {
     try {
-      const [logRes, staffRes, permRes, gdprRes, settingsRes, credRes] = await Promise.all([
-        api.auditLogs(), api.listStaff(), api.listPermissions(), api.listGdprRequests(), api.getSettings(), api.listStaffCredentials()
+      const [logRes, staffRes, permRes, gdprRes, settingsRes, credRes, commRes] = await Promise.all([
+        api.auditLogs(), api.listStaff(), api.listPermissions(), api.listGdprRequests(), api.getSettings(), api.listStaffCredentials(), api.listCommunications()
       ]);
       setLogs(logRes.items);
       setStaff(staffRes.items);
@@ -27,6 +28,7 @@ export function AdminCompliancePage() {
       setGdpr(gdprRes.items);
       setSettings(settingsRes as typeof settings);
       setCredentials(credRes.items);
+      setCommunications(commRes.items);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -101,6 +103,35 @@ export function AdminCompliancePage() {
           </li>))}</ul>
           {gdprPreview ? <pre className="transcript">{gdprPreview}</pre> : null}
           {gdprDeleteCheck ? <pre className="transcript">{gdprDeleteCheck}</pre> : null}
+        </article>
+
+
+
+        <article className="card">
+          <h3>Communication Outbox</h3>
+          <div className="inline-actions">
+            <button onClick={() => void api.processCommunications().then(load)}>Process queued</button>
+          </div>
+          <table>
+            <thead><tr><th>Time</th><th>Channel</th><th>Recipient</th><th>Template</th><th>Status</th></tr></thead>
+            <tbody>
+              {communications.map((msg) => (
+                <tr key={msg.id}>
+                  <td>{new Date(msg.createdAt).toLocaleString()}</td>
+                  <td>{msg.channel}</td>
+                  <td>{msg.recipient}</td>
+                  <td>{msg.template}</td>
+                  <td>
+                    <select value={msg.status} onChange={(e) => void api.setCommunicationStatus(msg.id, e.target.value as "QUEUED" | "SENT" | "FAILED").then(load)}>
+                      <option value="QUEUED">QUEUED</option>
+                      <option value="SENT">SENT</option>
+                      <option value="FAILED">FAILED</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </article>
 
         <article className="card">

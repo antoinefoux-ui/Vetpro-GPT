@@ -19,6 +19,7 @@ import type {
   StaffCredential,
   SurgeryRecord,
   SystemSettings,
+  CommunicationLog,
   ReturnRequest,
   User,
   VaccineRecord,
@@ -47,6 +48,7 @@ interface DbState {
   products: EcommerceProduct[];
   orders: EcommerceOrder[];
   returnRequests: ReturnRequest[];
+  communications: CommunicationLog[];
   refreshTokens: Array<{ token: string; userId: string; expiresAt: number }>;
   passwordResetTokens: PasswordResetToken[];
   auditLogs: AuditEntry[];
@@ -83,6 +85,7 @@ export const db: DbState = {
   ],
   orders: [],
   returnRequests: [],
+  communications: [],
   refreshTokens: [],
   passwordResetTokens: [],
   auditLogs: [],

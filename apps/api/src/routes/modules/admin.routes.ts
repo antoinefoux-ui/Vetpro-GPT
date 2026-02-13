@@ -16,6 +16,7 @@ import {
 } from "../../services/gdpr.service.js";
 import { getSettings, updateSettings } from "../../services/settings.service.js";
 import { createCredential, listCredentials } from "../../services/staff.service.js";
+import { listCommunications, markCommunicationStatus, processQueuedCommunications } from "../../services/communication.service.js";
 
 const querySchema = z.object({ limit: z.coerce.number().int().positive().max(500).optional() });
 const roleUpdateSchema = z.object({ role: z.enum(["ADMIN", "VETERINARIAN", "NURSE", "RECEPTIONIST", "SHOP_STAFF"]) });
@@ -36,6 +37,8 @@ const settingsPatchSchema = z.object({
     ekasaEndpoint: z.string().optional()
   }).optional()
 });
+const communicationStatusSchema = z.object({ status: z.enum(["QUEUED", "SENT", "FAILED"]) });
+
 const credentialSchema = z.object({
   userId: z.string().min(1),
   credentialType: z.enum(["DVM", "RVT", "CPR", "XRAY", "OTHER"]),
@@ -157,6 +160,31 @@ adminRouter.post("/gdpr-delete-execute/:clientId", requirePermission("admin.writ
     const result = executeDeletion(req.params.clientId);
     await logAuditEvent({ userId: req.user!.id, action: "GDPR_DELETION_EXECUTED", entityType: "Client", entityId: req.params.clientId, metadata: result as unknown as Record<string, unknown>, ipAddress: req.ip });
     return res.json(result);
+  } catch (error) {
+    return res.status(400).json({ error: (error as Error).message });
+  }
+});
+
+
+
+adminRouter.get("/communications", (req, res) => {
+  const limit = typeof req.query.limit === "string" ? Number(req.query.limit) : 100;
+  return res.json({ items: listCommunications(Number.isNaN(limit) ? 100 : limit) });
+});
+
+adminRouter.post("/communications/process", requirePermission("admin.write"), async (req, res) => {
+  const processed = processQueuedCommunications();
+  await logAuditEvent({ userId: req.user!.id, action: "COMMUNICATION_BATCH_PROCESSED", entityType: "Communication", entityId: `batch-${Date.now()}`, metadata: { processed: processed.length }, ipAddress: req.ip });
+  return res.json({ processed });
+});
+
+adminRouter.patch("/communications/:id/status", requirePermission("admin.write"), async (req, res) => {
+  const parsed = communicationStatusSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json(parsed.error.flatten());
+  try {
+    const item = markCommunicationStatus(req.params.id, parsed.data.status);
+    await logAuditEvent({ userId: req.user!.id, action: "COMMUNICATION_STATUS_UPDATED", entityType: "Communication", entityId: item.id, metadata: parsed.data, ipAddress: req.ip });
+    return res.json(item);
   } catch (error) {
     return res.status(400).json({ error: (error as Error).message });
   }

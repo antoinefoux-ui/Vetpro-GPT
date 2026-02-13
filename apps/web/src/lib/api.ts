@@ -16,7 +16,7 @@ import type {
 
 const base = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api";
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("vetpro_access_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -27,7 +27,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       "Content-Type": "application/json",
       ...authHeaders(),
-      ...(init?.headers ?? {})
+      ...(init?.headers && !(init.headers instanceof Headers) ? (init.headers as Record<string, string>) : {})
     }
   });
 
@@ -108,6 +108,9 @@ export const api = {
   listPermissions: () => request<{ rolePermissions: Record<UserRole, string[]> }>("/admin/permissions"),
   listStaff: () => request<{ items: Array<{ id: string; fullName: string; email: string; role: UserRole }> }>("/admin/staff"),
   updateStaffRole: (id: string, role: UserRole) => request(`/admin/staff/${id}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
+  listCommunications: (limit = 100) => request<{ items: Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; createdAt: string }> }>(`/admin/communications?limit=${limit}`),
+  processCommunications: () => request<{ processed: Array<{ id: string }> }>("/admin/communications/process", { method: "POST" }),
+  setCommunicationStatus: (id: string, status: "QUEUED" | "SENT" | "FAILED") => request(`/admin/communications/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   listStaffCredentials: (userId?: string) => request<{ items: StaffCredential[] }>(`/admin/staff/credentials${userId ? `?userId=${userId}` : ""}`),
   createStaffCredential: (payload: { userId: string; credentialType: StaffCredential["credentialType"]; credentialNumber?: string; expiresAt?: string }) => request("/admin/staff/credentials", { method: "POST", body: JSON.stringify(payload) }),
   listGdprRequests: () => request<{ items: Array<{ id: string; clientId: string; type: string; status: string; createdAt: string }> }>("/admin/gdpr-requests"),

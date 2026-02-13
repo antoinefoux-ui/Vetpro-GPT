@@ -34,6 +34,7 @@ function resetDb() {
   db.orders = [];
   db.returnRequests = [];
   db.noShows = [];
+  db.communications = [];
   db.refreshTokens = [];
   db.passwordResetTokens = [];
   db.auditLogs = [];
@@ -166,4 +167,23 @@ test("no-show fee and return flow", () => {
   const ret = createReturnRequest(order.id, "Wrong size");
   const done = updateReturnRequestStatus(ret.id, "REFUNDED");
   assert.equal(done.status, "REFUNDED");
+});
+
+
+test("communication logs are queued for no-show and returns", () => {
+  resetDb();
+  const client = createClient({ firstName: "Com", lastName: "User", phone: "+421900004444", email: "com@example.com" });
+  const pet = createPet({ clientId: client.id, name: "Luna", species: "Cat" });
+  const apt = createAppointment({ petId: pet.id, type: "Consult", startsAt: new Date("2026-01-05T10:00:00.000Z").toISOString(), endsAt: new Date("2026-01-05T10:30:00.000Z").toISOString() });
+  markNoShow(apt.id, "No answer");
+  assert.ok(db.communications.some((m) => m.template === "NO_SHOW_FOLLOW_UP"));
+
+  const order = createCart(client.email ?? "com@example.com");
+  addOrderLine(order.id, "prd_1", 1);
+  checkoutOrder(order.id);
+  updateOrderStatus(order.id, "PAID");
+  const ret = createReturnRequest(order.id, "Broken");
+  updateReturnRequestStatus(ret.id, "APPROVED");
+  assert.ok(db.communications.some((m) => m.template === "RETURN_REQUEST_RECEIVED"));
+  assert.ok(db.communications.some((m) => m.template === "RETURN_STATUS_UPDATED"));
 });

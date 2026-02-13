@@ -37,3 +37,9 @@
 - Scheduling now includes no-show logging endpoints and UI actions (`mark no-show` + no-show log list).
 - Billing now supports automated no-show fee invoice creation endpoint and UI action.
 - E-commerce now includes return request lifecycle (request/approve/reject/refunded) with admin-style status controls in UI.
+
+
+## Incremental build: communication outbox automation
+- No-show creation now queues automated follow-up SMS messages.
+- Return request creation/status updates now queue automated email messages.
+- Admin panel now includes communication outbox management with batch processing and manual status override.
