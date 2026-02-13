@@ -57,16 +57,6 @@ server.on("upgrade", async (req, socket) => {
       `Sec-WebSocket-Accept: ${accept}\r\n\r\n`
   );
 
-  const buildDashboardPayload = () => ({
-    timestamp: new Date().toISOString(),
-    stats: {
-      clients: db.clients.length,
-      appointments: db.appointments.length,
-      invoices: db.invoices.length,
-      lowStock: db.inventory.filter((item) => item.stockOnHand <= item.minStock).length
-    }
-  });
-
   const sendText = (message: string) => {
     const payload = Buffer.from(message);
     const frame = Buffer.alloc(2 + payload.length);
@@ -76,13 +66,11 @@ server.on("upgrade", async (req, socket) => {
     socket.write(frame);
   };
 
-  const heartbeatInterval = setInterval(() => sendText(JSON.stringify({ type: "heartbeat", at: new Date().toISOString() })), 15000);
-  const dashboardInterval = setInterval(() => sendText(JSON.stringify({ type: "dashboard", payload: buildDashboardPayload() })), 5000);
+  const interval = setInterval(() => sendText(JSON.stringify({ type: "heartbeat", at: new Date().toISOString() })), 15000);
   sendText(JSON.stringify({ type: "connected", protocol: "ws", at: new Date().toISOString() }));
-  sendText(JSON.stringify({ type: "dashboard", payload: buildDashboardPayload() }));
 
-  socket.on("close", () => { clearInterval(heartbeatInterval); clearInterval(dashboardInterval); });
-  socket.on("error", () => { clearInterval(heartbeatInterval); clearInterval(dashboardInterval); });
+  socket.on("close", () => clearInterval(interval));
+  socket.on("error", () => clearInterval(interval));
 });
 
 server.listen(env.PORT, () => {

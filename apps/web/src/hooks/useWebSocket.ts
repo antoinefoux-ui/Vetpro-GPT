@@ -7,12 +7,7 @@ export function useWebSocket(path: string, onMessage: (payload: unknown) => void
     const socket = new WebSocket(`${path}?token=${encodeURIComponent(token)}`);
     socket.onmessage = (event) => {
       try {
-        const parsed = JSON.parse(event.data) as { type?: string; payload?: unknown };
-        if (parsed && typeof parsed === "object" && "payload" in parsed && parsed.type === "dashboard") {
-          onMessage(parsed.payload);
-          return;
-        }
-        onMessage(parsed);
+        onMessage(JSON.parse(event.data));
       } catch {
         onMessage(event.data);
       }
