@@ -43,14 +43,13 @@ export function markCommunicationStatus(id: string, status: CommunicationLog["st
 }
 
 export function processQueuedCommunications(batchSize = 20): CommunicationLog[] {
-  const maxAttempts = db.settings.communicationPolicy.maxAttempts;
   const queued = db.communications.filter((item) => item.status === "QUEUED").slice(0, batchSize);
   queued.forEach((row) => {
     row.attempts += 1;
     row.lastAttemptAt = nowIso();
     if (shouldFailDelivery(row)) {
       row.status = "FAILED";
-      row.errorMessage = row.attempts >= maxAttempts ? "Delivery failed: max attempts reached" : "Simulated delivery failure";
+      row.errorMessage = "Simulated delivery failure";
       return;
     }
     row.status = "SENT";
@@ -60,10 +59,7 @@ export function processQueuedCommunications(batchSize = 20): CommunicationLog[] 
 }
 
 export function retryFailedCommunications(batchSize = 20): CommunicationLog[] {
-  const maxAttempts = db.settings.communicationPolicy.maxAttempts;
-  const failed = db.communications
-    .filter((item) => item.status === "FAILED" && item.attempts < maxAttempts)
-    .slice(0, batchSize);
+  const failed = db.communications.filter((item) => item.status === "FAILED").slice(0, batchSize);
   failed.forEach((row) => {
     row.status = "QUEUED";
     row.errorMessage = undefined;

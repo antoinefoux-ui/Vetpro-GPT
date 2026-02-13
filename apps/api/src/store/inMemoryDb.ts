@@ -111,9 +111,6 @@ export const db: DbState = {
       vaccineLeadDays: 30,
       annualExamIntervalDays: 365,
       enabledChannels: ["EMAIL", "SMS"]
-    },
-    communicationPolicy: {
-      maxAttempts: 3
     }
   }
 };

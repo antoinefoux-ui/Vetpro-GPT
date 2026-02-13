@@ -9,7 +9,7 @@ export function AdminCompliancePage() {
   const [credentials, setCredentials] = useState<StaffCredential[]>([]);
   const [permissions, setPermissions] = useState<Record<string, string[]>>({});
   const [gdpr, setGdpr] = useState<Array<{ id: string; clientId: string; type: string; status: string; createdAt: string }>>([]);
-  const [settings, setSettings] = useState({ clinicName: "", timezone: "Europe/Bratislava", defaultLanguage: "sk" as "en" | "sk", appointmentDefaultMinutes: 30, reminder24hEnabled: true, integrations: { googleCalendarApiKey: "", sendgridApiKey: "", smsProviderKey: "", stripePublicKey: "", ekasaEndpoint: "" }, reminderPolicy: { vaccineLeadDays: 30, annualExamIntervalDays: 365, enabledChannels: ["EMAIL", "SMS"] as Array<"EMAIL" | "SMS"> }, communicationPolicy: { maxAttempts: 3 } });
+  const [settings, setSettings] = useState({ clinicName: "", timezone: "Europe/Bratislava", defaultLanguage: "sk" as "en" | "sk", appointmentDefaultMinutes: 30, reminder24hEnabled: true, integrations: { googleCalendarApiKey: "", sendgridApiKey: "", smsProviderKey: "", stripePublicKey: "", ekasaEndpoint: "" }, reminderPolicy: { vaccineLeadDays: 30, annualExamIntervalDays: 365, enabledChannels: ["EMAIL", "SMS"] as Array<"EMAIL" | "SMS"> } });
   const [communications, setCommunications] = useState<Array<{ id: string; channel: "EMAIL" | "SMS"; recipient: string; template: string; status: "QUEUED" | "SENT" | "FAILED"; attempts: number; lastAttemptAt?: string; errorMessage?: string; createdAt: string }>>([]);
   const [gdprPreview, setGdprPreview] = useState("");
   const [gdprDeleteCheck, setGdprDeleteCheck] = useState("");
@@ -74,7 +74,6 @@ export function AdminCompliancePage() {
             <label>Vaccine lead days<input type="number" min={0} value={settings.reminderPolicy.vaccineLeadDays} onChange={(e) => setSettings({ ...settings, reminderPolicy: { ...settings.reminderPolicy, vaccineLeadDays: Number(e.target.value) } })} /></label>
             <label>Annual exam interval days<input type="number" min={1} value={settings.reminderPolicy.annualExamIntervalDays} onChange={(e) => setSettings({ ...settings, reminderPolicy: { ...settings.reminderPolicy, annualExamIntervalDays: Number(e.target.value) } })} /></label>
             <label>Reminder channels<select multiple value={settings.reminderPolicy.enabledChannels} onChange={(e) => { const selected = Array.from(e.target.selectedOptions).map((o) => o.value as "EMAIL" | "SMS"); setSettings({ ...settings, reminderPolicy: { ...settings.reminderPolicy, enabledChannels: selected.length ? selected : settings.reminderPolicy.enabledChannels } }); }}><option value="EMAIL">EMAIL</option><option value="SMS">SMS</option></select></label>
-            <label>Communication max attempts<input type="number" min={1} max={10} value={settings.communicationPolicy.maxAttempts} onChange={(e) => setSettings({ ...settings, communicationPolicy: { maxAttempts: Number(e.target.value) } })} /></label>
             <label>Google API key<input value={settings.integrations.googleCalendarApiKey} onChange={(e) => setSettings({ ...settings, integrations: { ...settings.integrations, googleCalendarApiKey: e.target.value } })} /></label>
             <label>SMS Provider<input value={settings.integrations.smsProviderKey} onChange={(e) => setSettings({ ...settings, integrations: { ...settings.integrations, smsProviderKey: e.target.value } })} /></label>
             <label>eKasa Endpoint<input value={settings.integrations.ekasaEndpoint} onChange={(e) => setSettings({ ...settings, integrations: { ...settings.integrations, ekasaEndpoint: e.target.value } })} /></label>
@@ -131,7 +130,7 @@ export function AdminCompliancePage() {
             <button onClick={() => void runReminders(true)}>Dry run reminder sweep</button>
           </div>
           <table>
-            <thead><tr><th>Time</th><th>Channel</th><th>Recipient</th><th>Template</th><th>Attempts</th><th>Last Attempt</th><th>Last Error</th><th>Status</th></tr></thead>
+            <thead><tr><th>Time</th><th>Channel</th><th>Recipient</th><th>Template</th><th>Attempts</th><th>Last Error</th><th>Status</th></tr></thead>
             <tbody>
               {communications.map((msg) => (
                 <tr key={msg.id}>
@@ -140,7 +139,6 @@ export function AdminCompliancePage() {
                   <td>{msg.recipient}</td>
                   <td>{msg.template}</td>
                   <td>{msg.attempts}</td>
-                  <td>{msg.lastAttemptAt ? new Date(msg.lastAttemptAt).toLocaleString() : "—"}</td>
                   <td>{msg.errorMessage ?? "—"}</td>
                   <td>
                     <select value={msg.status} onChange={(e) => void api.setCommunicationStatus(msg.id, e.target.value as "QUEUED" | "SENT" | "FAILED").then(load)}>

@@ -127,7 +127,7 @@ export const api = {
   listAiDrafts: () => request<{ items: Array<{ id: string; kind: string; summary: string; confidence: number; status: string; createdAt: string }> }>("/ai/drafts"),
   updateAiDraftStatus: (id: string, status: "PENDING_REVIEW" | "APPROVED" | "REJECTED") => request(`/ai/drafts/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
 
-  getSettings: () => request<{ clinicName: string; timezone: string; defaultLanguage: "en" | "sk"; appointmentDefaultMinutes: number; reminder24hEnabled: boolean; integrations: Record<string, string>; reminderPolicy: { vaccineLeadDays: number; annualExamIntervalDays: number; enabledChannels: Array<"EMAIL" | "SMS"> }; communicationPolicy: { maxAttempts: number } }>("/admin/settings"),
+  getSettings: () => request<{ clinicName: string; timezone: string; defaultLanguage: "en" | "sk"; appointmentDefaultMinutes: number; reminder24hEnabled: boolean; integrations: Record<string, string>; reminderPolicy: { vaccineLeadDays: number; annualExamIntervalDays: number; enabledChannels: Array<"EMAIL" | "SMS"> } }>("/admin/settings"),
   updateSettings: (patch: Record<string, unknown>) => request("/admin/settings", { method: "PATCH", body: JSON.stringify(patch) })
 };
 
