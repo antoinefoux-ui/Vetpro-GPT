@@ -7,7 +7,8 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1),
-  JWT_SECRET: z.string().min(16).default("replace-with-a-secure-secret")
+  JWT_SECRET: z.string().min(16).default("replace-with-a-secure-secret"),
+  FRONTEND_URL: z.string().optional()
 });
 
 export const env = EnvSchema.parse(process.env);
