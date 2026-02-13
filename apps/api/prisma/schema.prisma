@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  VETERINARIAN
+  NURSE
+  RECEPTIONIST
+  SHOP_STAFF
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+  NO_SHOW
+}
+
+enum AlertPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  fullName     String
+  role         UserRole
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  auditLogs    AuditLog[]
+  appointments Appointment[] @relation("AssignedVet")
+}
+
+model Client {
+  id            String      @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String
+  preferredLang String      @default("sk")
+  marketingOptIn Boolean    @default(false)
+  tags          String[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  pets          Pet[]
+  invoices      Invoice[]
+}
+
+model Pet {
+  id            String      @id @default(cuid())
+  clientId      String
+  name          String
+  species       String
+  breed         String?
+  sex           String?
+  birthDate     DateTime?
+  microchip     String?     @unique
+  weightKg      Float?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  client        Client      @relation(fields: [clientId], references: [id])
+  appointments  Appointment[]
+  encounters    Encounter[]
+}
+
+model Appointment {
+  id           String             @id @default(cuid())
+  petId         String
+  assignedVetId String?
+  startsAt      DateTime
+  endsAt        DateTime
+  type          String
+  status        AppointmentStatus @default(SCHEDULED)
+  reason        String?
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  pet           Pet               @relation(fields: [petId], references: [id])
+  assignedVet   User?             @relation("AssignedVet", fields: [assignedVetId], references: [id])
+}
+
+model Encounter {
+  id              String   @id @default(cuid())
+  petId            String
+  veterinarianId   String?
+  startedAt        DateTime @default(now())
+  completedAt      DateTime?
+  aiTranscript     String?
+  aiSummary        String?
+  diagnosis        String?
+  treatmentPlan    String?
+  pet              Pet      @relation(fields: [petId], references: [id])
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  clientId      String
+  number        String   @unique
+  subtotal      Decimal  @db.Decimal(10,2)
+  vatTotal      Decimal  @db.Decimal(10,2)
+  total         Decimal  @db.Decimal(10,2)
+  status        String   @default("DRAFT")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  client        Client   @relation(fields: [clientId], references: [id])
+  lines         InvoiceLine[]
+}
+
+model InvoiceLine {
+  id           String   @id @default(cuid())
+  invoiceId    String
+  description  String
+  quantity     Float
+  unitPrice    Decimal  @db.Decimal(10,2)
+  lineTotal    Decimal  @db.Decimal(10,2)
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model InventoryItem {
+  id             String   @id @default(cuid())
+  sku            String   @unique
+  name           String
+  category       String
+  stockOnHand    Float
+  minStock       Float
+  unit           String
+  expiresAt      DateTime?
+  lotNumber      String?
+  lastUpdatedAt  DateTime @updatedAt
+}
+
+model Notification {
+  id          String        @id @default(cuid())
+  title       String
+  message     String
+  priority    AlertPriority
+  read        Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  dueAt       DateTime?
+  completed   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId       String
+  action       String
+  entityType   String
+  entityId     String
+  metadata     Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+}
