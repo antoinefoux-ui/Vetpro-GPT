@@ -10,27 +10,12 @@ interface RealtimeStats {
   stats: { clients: number; appointments: number; invoices: number; lowStock: number };
 }
 
-function isRealtimeStats(payload: unknown): payload is RealtimeStats {
-  if (!payload || typeof payload !== "object") return false;
-  const candidate = payload as Partial<RealtimeStats>;
-  if (!candidate.stats || typeof candidate.stats !== "object") return false;
-  return (
-    typeof candidate.timestamp === "string" &&
-    typeof candidate.stats.clients === "number" &&
-    typeof candidate.stats.appointments === "number" &&
-    typeof candidate.stats.invoices === "number" &&
-    typeof candidate.stats.lowStock === "number"
-  );
-}
-
 export function DashboardPage() {
   const { t } = useI18n();
   const [realtime, setRealtime] = useState<RealtimeStats | null>(null);
 
   const onData = useCallback((payload: unknown) => {
-    if (isRealtimeStats(payload)) {
-      setRealtime(payload);
-    }
+    setRealtime(payload as RealtimeStats);
   }, []);
 
   useEventStream(eventStreamUrl, onData);

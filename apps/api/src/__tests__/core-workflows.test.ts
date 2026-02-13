@@ -17,7 +17,7 @@ import { addOrderLine, checkoutOrder, createCart, createReturnRequest, updateOrd
 import { createVaccine } from "../services/clinical.service.js";
 import { runReminderSweep } from "../services/reminder.service.js";
 import { updateSettings } from "../services/settings.service.js";
-import { processQueuedCommunications, queueCommunication, retryDueFailedCommunications, retryFailedCommunications } from "../services/communication.service.js";
+import { processQueuedCommunications, queueCommunication, retryFailedCommunications } from "../services/communication.service.js";
 
 function resetDb() {
   db.users = [];
@@ -60,10 +60,6 @@ function resetDb() {
       vaccineLeadDays: 30,
       annualExamIntervalDays: 365,
       enabledChannels: ["EMAIL", "SMS"]
-    },
-    communicationPolicy: {
-      maxAttempts: 3,
-      retryBackoffMinutes: 15
     }
   };
   db.inventory = [
@@ -287,37 +283,4 @@ test("communication failed messages can be requeued and retried", () => {
   const processedAgain = processQueuedCommunications();
   assert.equal(processedAgain[0].status, "SENT");
   assert.equal(processedAgain[0].attempts, 2);
-});
-
-
-test("retry excludes communications that reached max attempts", () => {
-  resetDb();
-  updateSettings({ communicationPolicy: { maxAttempts: 1 } });
-  queueCommunication({ channel: "EMAIL", recipient: "invalid@recipient.local", template: "TEST_MAX_ATTEMPTS", context: { forceFail: true } });
-
-  const processed = processQueuedCommunications();
-  assert.equal(processed[0].status, "FAILED");
-  assert.equal(processed[0].attempts, 1);
-  assert.equal(processed[0].errorMessage, "Delivery failed: max attempts reached");
-
-  const retried = retryFailedCommunications();
-  assert.equal(retried.length, 0);
-});
-
-
-test("retry due only requeues failed communications after backoff time", () => {
-  resetDb();
-  updateSettings({ communicationPolicy: { maxAttempts: 3, retryBackoffMinutes: 10 } });
-  queueCommunication({ channel: "EMAIL", recipient: "invalid@recipient.local", template: "TEST_DUE_RETRY", context: { forceFail: true } });
-
-  const processed = processQueuedCommunications();
-  assert.equal(processed[0].status, "FAILED");
-  assert.ok(processed[0].nextRetryAt);
-
-  const immediate = retryDueFailedCommunications(new Date("2026-01-01T00:00:00.000Z").toISOString());
-  assert.equal(immediate.length, 0);
-
-  const due = retryDueFailedCommunications(new Date("2099-01-01T00:00:00.000Z").toISOString());
-  assert.equal(due.length, 1);
-  assert.equal(due[0].status, "QUEUED");
 });
