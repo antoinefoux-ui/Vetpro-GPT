@@ -9,7 +9,19 @@ import { db } from "./store/inMemoryDb.js";
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+
+// Configure CORS with frontend URL
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    env.FRONTEND_URL || '*'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json({ limit: "10mb" }));
 
 if (db.users.length === 0) {
@@ -31,6 +43,8 @@ app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-app.listen(env.PORT, () => {
+app.listen(env.PORT, '0.0.0.0', () => {
   console.log(`VetPro API listening on port ${env.PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Frontend URL: ${env.FRONTEND_URL || 'not set'}`);
 });
